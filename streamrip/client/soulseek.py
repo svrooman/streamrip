@@ -278,6 +278,12 @@ class SoulseekClient(Client):
                 if fs < 0:
                     continue
                 artist, title = parse_track_name(f["filename"])
+                if artist is None:
+                    # bare "03 - Title.flac": the parent folder usually
+                    # carries the artist ("Artist - Album (year)")
+                    artist, _, _ = parse_folder_name(
+                        remote_dirname(f["filename"])
+                    )
                 scored.append(
                     (
                         fs * 1e6 + peer,
