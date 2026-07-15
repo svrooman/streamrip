@@ -19,6 +19,7 @@ from streamrip.config import (
     MiscConfig,
     QobuzConfig,
     QobuzDiscographyFilterConfig,
+    SoulseekConfig,
     SoundcloudConfig,
     TidalConfig,
     YoutubeConfig,
@@ -195,6 +196,7 @@ def test_sample_config_data_fields(sample_config_data):
             app_version="appversion",
             quality=0,
         ),
+        soulseek=SoulseekConfig(),
         youtube=YoutubeConfig(
             video_downloads_folder="videodownloadsfolder",
             quality=0,

@@ -7,7 +7,14 @@ from abc import ABC, abstractmethod
 from click import launch
 from rich.prompt import Prompt
 
-from ..client import Client, DeezerClient, QobuzClient, SoundcloudClient, TidalClient
+from ..client import (
+    Client,
+    DeezerClient,
+    QobuzClient,
+    SoulseekClient,
+    SoundcloudClient,
+    TidalClient,
+)
 from ..config import Config
 from ..console import console
 from ..exceptions import AuthenticationError, MissingCredentialsError
@@ -204,11 +211,31 @@ class SoundcloudPrompter(CredentialPrompter):
         return client
 
 
+class SoulseekPrompter(CredentialPrompter):
+    """slskd needs a URL and API key, not account credentials."""
+
+    def has_creds(self) -> bool:
+        # url has a sane default; only the key is truly required, and slskd
+        # can be configured with authentication disabled (empty key is valid)
+        return True
+
+    async def prompt_and_login(self):
+        await self.client.login()
+
+    def save(self):
+        pass
+
+    def type_check_client(self, client) -> SoulseekClient:
+        assert isinstance(client, SoulseekClient)
+        return client
+
+
 PROMPTERS = {
     "qobuz": QobuzPrompter,
     "deezer": DeezerPrompter,
     "tidal": TidalPrompter,
     "soundcloud": SoundcloudPrompter,
+    "soulseek": SoulseekPrompter,
 }
 
 

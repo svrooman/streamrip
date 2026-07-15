@@ -6,7 +6,14 @@ import platform
 import aiofiles
 
 from .. import db
-from ..client import Client, DeezerClient, QobuzClient, SoundcloudClient, TidalClient
+from ..client import (
+    Client,
+    DeezerClient,
+    QobuzClient,
+    SoulseekClient,
+    SoundcloudClient,
+    TidalClient,
+)
 from ..config import Config
 from ..console import console
 from ..media import (
@@ -53,6 +60,7 @@ class Main:
             "tidal": TidalClient(config),
             "deezer": DeezerClient(config),
             "soundcloud": SoundcloudClient(config),
+            "soulseek": SoulseekClient(config),
         }
 
         self.database: db.Database

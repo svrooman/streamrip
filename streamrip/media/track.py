@@ -76,7 +76,14 @@ class Track(Media):
         if self.is_single:
             remove_title(self.meta.title)
 
-        await tag_file(self.download_path, self.meta, self.cover_path)
+        # Soulseek metadata is parsed from file/folder names (peers share no
+        # tags), so writing it would clobber the file's real embedded tags.
+        # Only tag if the user opted in.
+        if (
+            self.downloadable.source != "soulseek"
+            or self.config.session.soulseek.write_tags
+        ):
+            await tag_file(self.download_path, self.meta, self.cover_path)
         if self.config.session.conversion.enabled:
             await self._convert()
 

@@ -248,7 +248,7 @@ class SearchResults:
 
         results = []
         for page in pages:
-            if source == "soundcloud":
+            if source in ("soundcloud", "soulseek"):
                 items = page["collection"]
                 for item in items:
                     results.append(summary_type.from_item(item))

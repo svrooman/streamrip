@@ -494,6 +494,45 @@ class AlbumMetadata:
         )
 
     @classmethod
+    def from_soulseek(cls, resp: dict) -> AlbumMetadata:
+        """Build from a soulseek client album- or track-metadata dict.
+
+        Soulseek carries no tags, so everything is parsed from remote
+        file/folder names by the client — best-effort by nature. Downloaded
+        files keep their own embedded tags.
+        """
+        tracks = resp.get("tracks", [])
+        container = "FLAC"
+        if tracks:
+            ext = tracks[0].get("filename", "").rpartition(".")[2].upper()
+            container = ext or container
+        info = AlbumInfo(
+            id=resp["id"],
+            quality=2,
+            container=container,
+        )
+        return AlbumMetadata(
+            info,
+            resp.get("album") or resp.get("title") or "Unknown Album",
+            typed(resp["albumartist"], str),
+            year=resp.get("year") or "Unknown",
+            genre=[],
+            covers=Covers(),
+            albumcomposer=None,
+            comment=None,
+            compilation=None,
+            copyright=None,
+            date=resp.get("year"),
+            description=None,
+            disctotal=1,
+            encoder=None,
+            grouping=None,
+            lyrics=None,
+            purchase_date=None,
+            tracktotal=resp.get("tracktotal", 1),
+        )
+
+    @classmethod
     def from_track_resp(cls, resp: dict, source: str) -> AlbumMetadata | None:
         if source == "qobuz":
             return cls.from_qobuz(resp["album"])
@@ -505,6 +544,8 @@ class AlbumMetadata:
             if "tracks" not in resp["album"]:
                 return cls.from_incomplete_deezer_track_resp(resp)
             return cls.from_deezer(resp["album"])
+        if source == "soulseek":
+            return cls.from_soulseek(resp)
         raise Exception("Invalid source")
 
     @classmethod
@@ -517,4 +558,6 @@ class AlbumMetadata:
             return cls.from_soundcloud(resp)
         if source == "deezer":
             return cls.from_deezer(resp)
+        if source == "soulseek":
+            return cls.from_soulseek(resp)
         raise Exception("Invalid source")

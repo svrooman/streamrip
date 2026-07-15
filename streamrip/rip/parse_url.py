@@ -26,6 +26,7 @@ QOBUZ_INTERPRETER_URL_REGEX = re.compile(
     r"https?://www\.qobuz\.com/\w\w-\w\w/interpreter/[-\w]+/([-\w]+)",
 )
 YOUTUBE_URL_REGEX = re.compile(r"https://www\.youtube\.com/watch\?v=[-\w]+")
+SLSK_URL_REGEX = re.compile(r"slsk://([^/]+)/(.+)")
 
 
 class URL(ABC):
@@ -217,6 +218,45 @@ class SoundcloudURL(URL):
         return cls(soundcloud_url.group(0))
 
 
+class SoulseekURL(URL):
+    """slsk://username/path%20to%20remote%20file — the Soulseek desktop
+    client's link format. Percent-encoded; a path ending in an audio
+    extension is a track, anything else is treated as a folder (album).
+    """
+
+    source = "soulseek"
+
+    def __init__(self, username: str, remote_path: str):
+        self.username = username
+        self.remote_path = remote_path
+
+    @classmethod
+    def from_str(cls, url: str) -> URL | None:
+        match = SLSK_URL_REGEX.match(url)
+        if match is None:
+            return None
+        from urllib.parse import unquote
+
+        username = unquote(match.group(1))
+        # slsk:// links use forward slashes for the remote (Windows) path
+        remote_path = unquote(match.group(2)).replace("/", "\\")
+        return cls(username, remote_path)
+
+    async def into_pending(
+        self,
+        client: Client,
+        config: Config,
+        db: Database,
+    ) -> Pending:
+        from ..client.soulseek import AUDIO_EXTS, encode_item_id
+
+        item_id = encode_item_id(self.username, self.remote_path)
+        ext = self.remote_path.rpartition(".")[2].lower()
+        if ext in AUDIO_EXTS:
+            return PendingSingle(item_id, client, config, db)
+        return PendingAlbum(item_id, client, config, db)
+
+
 def parse_url(url: str) -> URL | None:
     """Return a URL type given a url string.
 
@@ -232,6 +272,7 @@ def parse_url(url: str) -> URL | None:
         QobuzInterpreterURL.from_str(url),
         SoundcloudURL.from_str(url),
         DeezerDynamicURL.from_str(url),
+        SoulseekURL.from_str(url),
         # TODO: the rest of the url types
     ]
     return next((u for u in parsed_urls if u is not None), None)

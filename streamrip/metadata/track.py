@@ -216,6 +216,32 @@ class TrackMetadata:
         )
 
     @classmethod
+    def from_soulseek(cls, album: AlbumMetadata, resp: dict) -> TrackMetadata:
+        """Build from a soulseek client track-metadata dict.
+
+        Soulseek search results carry no tags; fields are parsed from the
+        remote file/folder names by the client, so they are best-effort.
+        """
+        info = TrackInfo(
+            id=resp["id"],
+            quality=album.info.quality,
+            bit_depth=resp.get("bitDepth"),
+            explicit=False,
+            sampling_rate=resp.get("sampleRate"),
+            work=None,
+        )
+        return cls(
+            info=info,
+            title=typed(resp["title"], str),
+            album=album,
+            artist=typed(resp["artist"], str),
+            tracknumber=typed(resp.get("tracknumber", 1), int),
+            discnumber=1,
+            composer=None,
+            isrc=None,
+        )
+
+    @classmethod
     def from_resp(cls, album: AlbumMetadata, source, resp) -> TrackMetadata | None:
         if source == "qobuz":
             return cls.from_qobuz(album, resp)
@@ -225,6 +251,8 @@ class TrackMetadata:
             return cls.from_soundcloud(album, resp)
         if source == "deezer":
             return cls.from_deezer(album, resp)
+        if source == "soulseek":
+            return cls.from_soulseek(album, resp)
         raise Exception
 
     def format_track_path(self, format_string: str) -> str:

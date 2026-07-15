@@ -80,6 +80,28 @@ quality = 0
 client_id = ""
 app_version = ""
 
+[soulseek]
+# Base URL of the slskd daemon (https://github.com/slskd/slskd)
+slskd_url = "http://localhost:5030"
+# An API key from slskd's web.authentication.api_keys config
+slskd_api_key = ""
+# slskd's configured download directory (absolute path); completed files are
+# located here and moved into streamrip's downloads folder
+download_folder = ""
+# Seconds to let a search run before collecting results
+search_timeout = 30
+# Seconds to wait for a peer transfer before giving up
+download_timeout = 600
+# Ranked preference when choosing between copies of the same file
+preferred_formats = ["flac", "mp3", "m4a"]
+# Lossy files below this bitrate (kbps) are ignored
+min_bitrate = 320
+# Keep the files' embedded tags (metadata here is parsed from filenames and
+# would clobber them); set true to overwrite tags with parsed metadata
+write_tags = false
+# 0: any audio, 1: lossy >= min_bitrate, 2/3: lossless, 4: any lossless
+quality = 4
+
 [youtube]
 # Only 0 is available for now
 quality = 0

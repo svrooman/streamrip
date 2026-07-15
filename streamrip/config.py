@@ -86,6 +86,36 @@ class SoundcloudConfig:
 
 
 @dataclass(slots=True)
+class SoulseekConfig:
+    # Base URL of the slskd daemon that talks to the Soulseek network
+    slskd_url: str = "http://localhost:5030"
+    # An API key from slskd's web.authentication.api_keys config
+    slskd_api_key: str = ""
+    # slskd's configured download directory (absolute path). Completed files
+    # are located here and moved into streamrip's downloads folder.
+    download_folder: str = ""
+    # Seconds to let a search run before collecting results
+    search_timeout: int = 30
+    # Seconds to wait for a peer transfer before giving up
+    download_timeout: int = 600
+    # Ranked preference when choosing between copies of the same file
+    preferred_formats: list[str] = None  # type: ignore
+    # Lossy files below this bitrate (kbps) are ignored
+    min_bitrate: int = 320
+    # Soulseek files keep their embedded tags by default: streamrip's metadata
+    # for this source is parsed from file/folder names and would clobber them.
+    # Set true to overwrite tags with the parsed metadata anyway.
+    write_tags: bool = False
+    # No real tiers on soulseek; kept for interface compatibility.
+    # 0: any audio, 1: lossy >= min_bitrate, 2/3: lossless, 4: any lossless
+    quality: int = 4
+
+    def __post_init__(self):
+        if self.preferred_formats is None:
+            self.preferred_formats = ["flac", "mp3", "m4a"]
+
+
+@dataclass(slots=True)
 class YoutubeConfig:
     # The path to download the videos to
     video_downloads_folder: str
@@ -251,6 +281,7 @@ class ConfigData:
     tidal: TidalConfig
     deezer: DeezerConfig
     soundcloud: SoundcloudConfig
+    soulseek: SoulseekConfig
     youtube: YoutubeConfig
     lastfm: LastFmConfig
 
@@ -281,6 +312,9 @@ class ConfigData:
         tidal = TidalConfig(**toml["tidal"])  # type: ignore
         deezer = DeezerConfig(**toml["deezer"])  # type: ignore
         soundcloud = SoundcloudConfig(**toml["soundcloud"])  # type: ignore
+        # optional section: configs written before the soulseek source existed
+        # (or updated from them) may not have it; fall back to defaults
+        soulseek = SoulseekConfig(**toml.get("soulseek", {}))  # type: ignore
         youtube = YoutubeConfig(**toml["youtube"])  # type: ignore
         lastfm = LastFmConfig(**toml["lastfm"])  # type: ignore
         artwork = ArtworkConfig(**toml["artwork"])  # type: ignore
@@ -299,6 +333,7 @@ class ConfigData:
             tidal=tidal,
             deezer=deezer,
             soundcloud=soundcloud,
+            soulseek=soulseek,
             youtube=youtube,
             lastfm=lastfm,
             artwork=artwork,
@@ -329,6 +364,8 @@ class ConfigData:
         update_toml_section_from_config(self.toml["tidal"], self.tidal)
         update_toml_section_from_config(self.toml["deezer"], self.deezer)
         update_toml_section_from_config(self.toml["soundcloud"], self.soundcloud)
+        if "soulseek" in self.toml:
+            update_toml_section_from_config(self.toml["soulseek"], self.soulseek)
         update_toml_section_from_config(self.toml["youtube"], self.youtube)
         update_toml_section_from_config(self.toml["lastfm"], self.lastfm)
         update_toml_section_from_config(self.toml["artwork"], self.artwork)
@@ -342,12 +379,13 @@ class ConfigData:
     def get_source(
         self,
         source: str,
-    ) -> QobuzConfig | DeezerConfig | SoundcloudConfig | TidalConfig:
+    ) -> QobuzConfig | DeezerConfig | SoundcloudConfig | TidalConfig | SoulseekConfig:
         d = {
             "qobuz": self.qobuz,
             "deezer": self.deezer,
             "soundcloud": self.soundcloud,
             "tidal": self.tidal,
+            "soulseek": self.soulseek,
         }
         res = d.get(source)
         if res is None:
