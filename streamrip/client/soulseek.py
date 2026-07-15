@@ -212,6 +212,35 @@ def parse_track_name(filename: str) -> tuple[str | None, str]:
     return None, stem.strip()
 
 
+# Folder names that are organization, not artists, when walking up the tree
+GENERIC_DIRS = {
+    "music", "shared", "shares", "soulseek", "downloads", "download", "flac",
+    "mp3", "lossless", "albums", "album", "artists", "audio", "library",
+    "media", "sorted", "complete", "singles", "compilations", "va",
+}
+
+
+def parent_artist(folder: str) -> str | None:
+    """Artist guess from the folder ABOVE an album folder.
+
+    Peers commonly organize as .../Artist/Album/01 - track.ext, so when the
+    album folder itself has no "Artist - " prefix, its parent is usually the
+    artist. Skips share roots (@@alias), drive letters, and generic names.
+    """
+    parts = _split_remote(folder)
+    if len(parts) < 2:
+        return None
+    cand = parts[-2].strip()
+    if (
+        not cand
+        or cand.startswith("@@")
+        or ":" in cand
+        or cand.lower() in GENERIC_DIRS
+    ):
+        return None
+    return cand
+
+
 def parse_folder_name(folder: str) -> tuple[str | None, str, str | None]:
     """Best-effort (artist, album, year) from a remote folder path."""
     name = remote_basename(folder)
@@ -280,10 +309,12 @@ class SoulseekClient(Client):
                 artist, title = parse_track_name(f["filename"])
                 if artist is None:
                     # bare "03 - Title.flac": the parent folder usually
-                    # carries the artist ("Artist - Album (year)")
-                    artist, _, _ = parse_folder_name(
-                        remote_dirname(f["filename"])
-                    )
+                    # carries the artist ("Artist - Album (year)"), or the
+                    # grandparent does (.../Artist/Album/03 - Title.flac)
+                    folder = remote_dirname(f["filename"])
+                    artist, _, _ = parse_folder_name(folder)
+                    if artist is None:
+                        artist = parent_artist(folder)
                 scored.append(
                     (
                         fs * 1e6 + peer,
@@ -331,6 +362,8 @@ class SoulseekClient(Client):
             )
             median = fscores[len(fscores) // 2]
             artist, album, year = parse_folder_name(folder)
+            if artist is None:
+                artist = parent_artist(folder)
             scored.append(
                 (
                     median * 1e6 + len(audio) * 1e3 + peer_score[username],
@@ -369,6 +402,8 @@ class SoulseekClient(Client):
             "Unknown Album",
             None,
         )
+        if folder_artist is None and folder:
+            folder_artist = parent_artist(folder)
         # size is needed to enqueue; fetch it from the folder listing
         size = None
         files = await self.api.directory(username, folder) if folder else []
@@ -405,6 +440,8 @@ class SoulseekClient(Client):
                 f"No downloadable audio in {folder} shared by {username}"
             )
         artist, album, year = parse_folder_name(folder)
+        if artist is None:
+            artist = parent_artist(folder)
         tracks = []
         for f in audio:
             t_artist, t_title = parse_track_name(f["filename"])
